@@ -4,15 +4,9 @@ struct square
 {
     int x1, x2, y1, y2;
 } sq[3];
-sigend main()
+signed main()
 {
-    int o = 3;
-    while(--o)
-        cin >> sq[o].x1 >> sq[o].y1 >> sq[o].x2 >> sq[o].y2;
-    cout << calc(1) + calc(2);
+    while(-1)
+    cout<<"rnm";
     return false;
-}
-calc(int i)
-{
-    
 }
