@@ -1,4 +1,5 @@
-/*The MIT License (MIT)
+/*
+The MIT License (MIT)
 Copyright (C) 2024 Izumi Sucrose
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -18,7 +19,8 @@ MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO
 EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR
 OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.*/
+THE SOFTWARE.
+*/
 
 #include <bits/stdc++.h>
 #define complex_type pair<double, double>
@@ -32,6 +34,30 @@ using namespace std;
 pair<double, double> x(double i, double j = 0) {
   return make_pair(i, j);
 } // 1+2i==x(1,2)
+
+// convert string to complex
+complex_type str2cmpx(string a) {
+  bool _img = false;
+  string real, img;
+  double real_d = 0, img_d = 0;
+  for (auto i : a) {
+    if (i == '+')
+      _img = true;
+    else if (_img)
+      img += i;
+    else
+      real += i;
+  }
+  if (img != "")
+    return x(stod(real), stod(img));
+  else {
+    if ((real.back() == 'j') || (real.back() == 'i')) {
+      real.pop_back();
+      return x(0, stod(real));
+    } else
+      return x(stod(real), 0);
+  }
+}
 
 // Function:Matrix dot product
 complex_type x_multiple(complex_type xx, complex_type y) {
@@ -196,7 +222,7 @@ int matrix::size(int type) {
 
 // Print the matrix on the console
 void matrix::print() {
-  cout << "Matrid Nodes Count:" << row * col << endl;
+  cout << "Matrix Nodes Count:" << row * col << endl;
   cout << "Matrix Row Count: " << row << " ,Matrix Col Count: " << col << endl;
   for (int i = 0; i < row; i++) {
     for (int j = 0; j < col; j++)
@@ -556,39 +582,222 @@ matrix_type Correct(int n, int m, matrix U, complex_vector dP,
 }
 
 int main() {
+  clock_t start, end; // time variable
+  start = clock();    // start time
+  int SB = 100;       // Benchmark Capacity, take 100 as default
+  vector<double> Bus;
+
   // This is SAMPLE DATA, please adjust them to your own data
-  int SB = 100; // Benchmark capacity in MVA
+  // int SB = 100; // Benchmark capacity in MVA
+  /*
+  Bus=[230 230 230 230 230 230 18 13.8 16.5]
   vector<double> Bus = {230, 230, 230,  230, 230,
                         230, 18,  13.8, 16.5}; // Bus reference voltage
+  */
   matrix Line, Trans, Gen, Load, Zt;
   // AC line parameters:
-  // I-side bus, J-side bus, impedance, 1/2 ground admittance
+  // I-side bus Number, J-side bus Number, impedance, 1/2 ground admittance
+  /*
+  Line=[6   1   0.01+0.085i     0.088i
+        1   4   0.032+0.161i    0.153i
+        4   3   0.0085+0.072i   0.0745i
+        3   5   0.0119+0.1008i  0.1045i
+        5   2   0.039+0.17i     0.179i
+        2   6   0.017+0.092i    0.079i]
+
   Line.fork({{x(6), x(1), x(0.01, 0.085), x(0, 0.088)},
              {x(1), x(4), x(0.032, 0.161), x(0, 0.153)},
              {x(4), x(3), x(0.0085, 0.072), x(0, 0.0745)},
              {x(3), x(5), x(0.0119, 0.1008), x(0, 0.1045)},
              {x(5), x(2), x(0.039, 0.17), x(0, 0.179)},
              {x(2), x(6), x(0.017, 0.092), x(0, 0.079)}});
+  */
+
   // Transformer parameters
-  // I-side bus, J-side bus, impedance, transformer ratio
+  // I-side bus Number, J-side bus Number, impedance, transformer ratio
   // Transformer impedance reduction to side I
+  /*
+  Trans=[ 9   6   0.0576i   1
+          7   4   0.0625i   1
+          8   5   0.0586i   1]
   Trans.fork({{x(9), x(6), x(0, 0.0576), x(1)},
               {x(7), x(4), x(0, 0.0625), x(1)},
               {x(8), x(5), x(0, 0.0586), x(1)}});
+  */
+
   // Generator parameters
-  // Bus, node type, PV/U, θ
+  // Bus Number, node type, PV/U, θ
+  /*
+  Gen=[ 9   3   1.04  0
+        7   2   1.63  1.025
+        8   2   0.85  1.025]
   Gen.fork({{x(9), x(3), x(1.04), x(0)},
             {x(7), x(2), x(1.63), x(1.025)},
             {x(8), x(2), x(0.85), x(1.025)}});
+  */
+
   // Load parameters
   // Bus, node type, P, Q
+  /*
+  Load=[  1   1   -1.25   -0.5
+          2   1   -0.9    -0.3
+          3   1   -1      -0.35]
   Load.fork({{x(1), x(1), x(-1.25), x(-0.5)},
              {x(2), x(1), x(-0.9), x(-0.3)},
              {x(3), x(1), x(-1), x(-0.35)}});
+  */
 
-  int mode =
-      1; // 1- Newton's method in polar coordinates, 2- PQ decomposition method
-  int Tmax = 10;                    // Max iterating count
+  //##########################################################
+  fstream input_data("Newton_PQ_data.dat", ios::in);
+  string buffer;
+  // Get Benchmark Capacity parameters
+  input_data.seekg(0, ios::beg);
+  while (getline(input_data, buffer)) {
+    if (buffer == "[Benchmark Capacity]") {
+      while (getline(input_data, buffer))
+        if (buffer == "")
+          break;
+        else
+          SB = atoi(buffer.c_str());
+      break;
+    }
+  }
+
+  // Get Bus Parameters
+  input_data.seekg(0, ios::beg);
+  string raw_data;
+  while (getline(input_data, buffer)) {
+    if (buffer == "[Bus]") {
+      while (getline(input_data, buffer))
+        if (buffer == "")
+          break;
+        else
+          raw_data = buffer;
+      break;
+    }
+  }
+
+  string temp;
+  for (auto i : raw_data) {
+    if (i != ' ')
+      temp += i;
+    else {
+      Bus.push_back(stod(temp));
+      temp = "";
+    }
+  }
+  Bus.push_back(stod(temp));
+
+  // Get AC line parameters
+  input_data.seekg(0, ios::beg);
+  while (getline(input_data, buffer)) {
+    if (buffer == "[AC Line Parameters]") {
+      int row = 1;
+      while (getline(input_data, buffer)) {
+        if (buffer == "")
+          break;
+        else {
+          temp = "";
+          int cnt = 1;
+          for (auto a : buffer)
+            if (a == ' ') {
+              Line.set(row, cnt++, str2cmpx(temp));
+              temp = "";
+            } else
+              temp += a;
+          Line.set(row, cnt++, str2cmpx(temp));
+          temp = "";
+        }
+        row++;
+      }
+      break;
+    }
+  }
+
+  // Get Transformer parameters
+  input_data.seekg(0, ios::beg);
+  while (getline(input_data, buffer)) {
+    if (buffer == "[Transformer Parameters]") {
+      int row = 1;
+      while (getline(input_data, buffer)) {
+        if (buffer == "")
+          break;
+        else {
+          temp = "";
+          int cnt = 1;
+          for (auto a : buffer)
+            if (a == ' ') {
+              Trans.set(row, cnt++, str2cmpx(temp));
+              temp = "";
+            } else
+              temp += a;
+          Trans.set(row, cnt++, str2cmpx(temp));
+          temp = "";
+        }
+        row++;
+      }
+      break;
+    }
+  }
+
+  // Get Generator parameters
+  input_data.seekg(0, ios::beg);
+  while (getline(input_data, buffer)) {
+    if (buffer == "[Generator Parameters]") {
+      int row = 1;
+      while (getline(input_data, buffer)) {
+        if (buffer == "")
+          break;
+        else {
+          temp = "";
+          int cnt = 1;
+          for (auto a : buffer)
+            if (a == ' ') {
+              Gen.set(row, cnt++, str2cmpx(temp));
+              temp = "";
+            } else
+              temp += a;
+          Gen.set(row, cnt++, str2cmpx(temp));
+          temp = "";
+        }
+        row++;
+      }
+      break;
+    }
+  }
+
+  // Load Parameters
+  input_data.seekg(0, ios::beg);
+  while (getline(input_data, buffer)) {
+    if (buffer == "[Load Parameters]") {
+      int row = 1;
+      while (getline(input_data, buffer)) {
+        if (buffer == "")
+          break;
+        else {
+          temp = "";
+          int cnt = 1;
+          for (auto a : buffer)
+            if (a == ' ') {
+              Load.set(row, cnt++, str2cmpx(temp));
+              temp = "";
+            } else
+              temp += a;
+          Load.set(row, cnt++, str2cmpx(temp));
+          temp = "";
+        }
+        row++;
+      }
+      break;
+    }
+  }
+
+  // Redirect output stream
+  freopen("Newton_PQ_output.log", "w+", stdout);
+  //##########################################################
+  int mode = 2;
+  // 1- Newton's method in polar coordinates, 2- PQ decomposition method
+  int Tmax = 20;                    // Max iterating count
   double limit = 1.0 * pow(10, -8); // Required precision
 
   Zt.init(Trans.size(1), 3);
@@ -795,9 +1004,15 @@ int main() {
   }
 
   // Iteration Ended
+  fclose(stdout);
+  freopen("Newton_PQ_result.dat", "w+", stdout);
+  /*
   cout << "------------------------------------------------------------"
           "-------"
        << endl;
+  */
+  cout << "Chosen Method: "
+       << (mode == 1 ? "Newton-Raphson" : "P-Q Decomposition") << endl;
   cout << "\nIteration counts: " << cnt << endl;
   cout << "\nNode Voltage Amplitude" << endl;
   U.print();
@@ -807,6 +1022,10 @@ int main() {
   cout << setw(10) << Pi << endl;
   cout << "\nDeactive Power Result" << endl;
   cout << setw(10) << Qi << endl;
+  end = clock(); // end time
+  cout << "\nCalculation Cost = " << double(end - start) / CLOCKS_PER_SEC << "s"
+       << endl;
+  fclose(stdout);
   return 0;
 }
 
